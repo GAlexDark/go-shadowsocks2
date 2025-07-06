@@ -316,7 +316,10 @@ func udpAddrToNetip(addr net.Addr) (netip.AddrPort, error) {
 	if !ok {
 		return netip.AddrPort{}, fmt.Errorf("not a UDPAddr")
 	}
-	ip := netip.ParseAddr(udp.IP.String())
+	ip, ok := netip.ParseAddr(udp.IP.String())
+	if !ok {
+		return netip.AddrPort{}, fmt.Errorf("invalid IP: %v", udp.IP)
+	}
 	if !ip.IsValid() {
 		return netip.AddrPort{}, fmt.Errorf("invalid IP: %v", udp.IP)
 	}
