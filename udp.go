@@ -266,7 +266,6 @@ func timedCopy(dst UDPConn, target netip.AddrPort, src net.PacketConn, timeout t
 
 	for {
 		src.SetReadDeadline(time.Now().Add(timeout))
-//		n, raddr, err := src.ReadFrom(buf)
 		n, addr, err := src.ReadFrom(buf)
 		if err != nil {
 			return err
@@ -275,18 +274,18 @@ func timedCopy(dst UDPConn, target netip.AddrPort, src net.PacketConn, timeout t
 		if err != nil {
 			return fmt.Errorf("address conversion failed: %v", err)
 		}
-// End of patch
+
 		switch role {
 		case remoteServer: // server -> client: add original packet source
 			srcAddr := socks.ParseAddr(raddr.String())
 			copy(buf[len(srcAddr):], buf[:n])
 			copy(buf, srcAddr)
-			_, err = dst.WriteToUDPAddrPort(buf[:len(srcAddr)+n], target)
+			_, err = dst.WriteTo(buf[:len(srcAddr)+n], target)
 		case relayClient: // client -> user: strip original packet source
 			srcAddr := socks.SplitAddr(buf[:n])
-			_, err = dst.WriteToUDPAddrPort(buf[len(srcAddr):n], target)
+			_, err = dst.WriteTo(buf[len(srcAddr):n], target)
 		case socksClient: // client -> socks5 program: just set RSV and FRAG = 0
-			_, err = dst.WriteToUDPAddrPort(append([]byte{0, 0, 0}, buf[:n]...), target)
+			_, err = dst.WriteTo(append([]byte{0, 0, 0}, buf[:n]...), target)
 		}
 
 		if err != nil {
