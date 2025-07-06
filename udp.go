@@ -249,7 +249,7 @@ func (m *natmap) Del(key netip.AddrPort) net.PacketConn {
 	return nil
 }
 
-func (m *natmap) Add(peer netip.AddrPort, dst UDPConn, src net.PacketConn, role mode) {
+func (m *natmap) Add(peer netip.AddrPort, dst net.PacketConn, src net.PacketConn, role mode) {
 	m.Set(peer, src)
 
 	go func() {
