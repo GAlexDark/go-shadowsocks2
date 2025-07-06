@@ -199,7 +199,7 @@ func udpRemote(addr string, shadow func(net.PacketConn) net.PacketConn) {
 				continue
 			}
 
-			nm.Add(raddr, c, pc, remoteServer)
+			nm.Add(raddr, pc, pc, remoteServer)
 		}
 
 		_, err = pc.WriteTo(payload, tgtUDPAddr) // accept only UDPAddr despite the signature
