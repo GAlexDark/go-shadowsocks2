@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shadowsocks/go-shadowsocks2/socks"
+	"github.com/GAlexDark/go-shadowsocks2/socks"
 )
 
 type mode int
@@ -54,11 +54,6 @@ func udpLocal(laddr, server, target string, shadow func(net.PacketConn) net.Pack
 
 	logf("UDP tunnel %s <-> %s <-> %s", laddr, server, target)
 	for {
-//		n, raddr, err := c.ReadFromUDPAddrPort(buf[len(tgt):])
-//		if err != nil {
-//			logf("UDP local read error: %v", err)
-//			continue
-//		}
 		n, addr, err := c.ReadFrom(buf[len(tgt):])
 		if err != nil {
 			logf("UDP local read error: %v", err)
@@ -69,7 +64,7 @@ func udpLocal(laddr, server, target string, shadow func(net.PacketConn) net.Pack
 			logf("Address conversion failed: %v", err)
 			continue
 		}
-// End of patch
+
 		pc := nm.Get(raddr)
 		if pc == nil {
 			pc, err = net.ListenPacket("udp", "")
@@ -115,11 +110,6 @@ func udpSocksLocal(laddr, server string, shadow func(net.PacketConn) net.PacketC
 	buf := make([]byte, udpBufSize)
 
 	for {
-//		n, raddr, err := c.ReadFromUDPAddrPort(buf)
-//		if err != nil {
-//			logf("UDP local read error: %v", err)
-//			continue
-//		}
 		n, addr, err := c.ReadFrom(buf)
 		if err != nil {
 			logf("UDP local read error: %v", err)
@@ -130,7 +120,7 @@ func udpSocksLocal(laddr, server string, shadow func(net.PacketConn) net.PacketC
 			logf("Address conversion failed: %v", err)
 			continue
 		}
-// End of patch
+
 		pc := nm.Get(raddr)
 		if pc == nil {
 			pc, err = net.ListenPacket("udp", "")
@@ -170,18 +160,12 @@ func udpRemote(addr string, shadow func(net.PacketConn) net.PacketConn) {
 		return
 	}
 	defer cc.Close()
-	c := shadow(cc).(UDPConn)
-
+	pc := shadow(cc) // net.PacketConn
 	nm := newNATmap(config.UDPTimeout)
 	buf := make([]byte, udpBufSize)
 
 	logf("listening UDP on %s", addr)
 	for {
-//		n, raddr, err := c.ReadFromUDPAddrPort(buf)
-//		if err != nil {
-//			logf("UDP remote read error: %v", err)
-//			continue
-//		}
 		n, addr, err := c.ReadFrom(buf)
 		if err != nil {
 			logf("UDP remote read error: %v", err)
@@ -192,7 +176,7 @@ func udpRemote(addr string, shadow func(net.PacketConn) net.PacketConn) {
 			logf("Address conversion failed: %v", err)
 			continue
 		}
-// End of patch
+
 		tgtAddr := socks.SplitAddr(buf[:n])
 		if tgtAddr == nil {
 			logf("failed to split target address from packet: %q", buf[:n])
