@@ -166,7 +166,7 @@ func udpRemote(addr string, shadow func(net.PacketConn) net.PacketConn) {
 
 	logf("listening UDP on %s", addr)
 	for {
-		n, addr, err := c.ReadFrom(buf)
+		n, addr, err := pc.ReadFrom(buf)
 		if err != nil {
 			logf("UDP remote read error: %v", err)
 			continue
