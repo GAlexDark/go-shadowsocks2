@@ -261,8 +261,13 @@ func (m *natmap) Add(peer netip.AddrPort, dst net.PacketConn, src net.PacketConn
 }
 
 // copy from src to dst at target with read timeout
-func timedCopy(dst UDPConn, target netip.AddrPort, src net.PacketConn, timeout time.Duration, role mode) error {
+func timedCopy(dst net.PacketConn, target netip.AddrPort, src net.PacketConn, timeout time.Duration, role mode) error {
 	buf := make([]byte, udpBufSize)
+
+	udpTarget := &net.UDPAddr{
+		IP:   target.Addr().AsSlice(),
+		Port: int(target.Port()),
+	}
 
 	for {
 		src.SetReadDeadline(time.Now().Add(timeout))
@@ -270,22 +275,18 @@ func timedCopy(dst UDPConn, target netip.AddrPort, src net.PacketConn, timeout t
 		if err != nil {
 			return err
 		}
-		raddr, err := udpAddrToNetip(addr)
-		if err != nil {
-			return fmt.Errorf("address conversion failed: %v", err)
-		}
 
 		switch role {
-		case remoteServer: // server -> client: add original packet source
-			srcAddr := socks.ParseAddr(raddr.String())
+		case remoteServer:
+			srcAddr := socks.ParseAddr(addr.String())
 			copy(buf[len(srcAddr):], buf[:n])
 			copy(buf, srcAddr)
-			_, err = dst.WriteTo(buf[:len(srcAddr)+n], target)
-		case relayClient: // client -> user: strip original packet source
+			_, err = dst.WriteTo(buf[:len(srcAddr)+n], udpTarget)
+		case relayClient:
 			srcAddr := socks.SplitAddr(buf[:n])
-			_, err = dst.WriteTo(buf[len(srcAddr):n], target)
-		case socksClient: // client -> socks5 program: just set RSV and FRAG = 0
-			_, err = dst.WriteTo(append([]byte{0, 0, 0}, buf[:n]...), target)
+			_, err = dst.WriteTo(buf[len(srcAddr):n], udpTarget)
+		case socksClient:
+			_, err = dst.WriteTo(append([]byte{0, 0, 0}, buf[:n]...), udpTarget)
 		}
 
 		if err != nil {
