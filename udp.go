@@ -54,12 +54,22 @@ func udpLocal(laddr, server, target string, shadow func(net.PacketConn) net.Pack
 
 	logf("UDP tunnel %s <-> %s <-> %s", laddr, server, target)
 	for {
-		n, raddr, err := c.ReadFromUDPAddrPort(buf[len(tgt):])
+//		n, raddr, err := c.ReadFromUDPAddrPort(buf[len(tgt):])
+//		if err != nil {
+//			logf("UDP local read error: %v", err)
+//			continue
+//		}
+		n, addr, err := c.ReadFrom(buf[len(tgt):])
 		if err != nil {
 			logf("UDP local read error: %v", err)
 			continue
 		}
-
+		raddr, err := udpAddrToNetip(addr)
+		if err != nil {
+			logf("Address conversion failed: %v", err)
+			continue
+		}
+// End of patch
 		pc := nm.Get(raddr)
 		if pc == nil {
 			pc, err = net.ListenPacket("udp", "")
@@ -105,12 +115,22 @@ func udpSocksLocal(laddr, server string, shadow func(net.PacketConn) net.PacketC
 	buf := make([]byte, udpBufSize)
 
 	for {
-		n, raddr, err := c.ReadFromUDPAddrPort(buf)
+//		n, raddr, err := c.ReadFromUDPAddrPort(buf)
+//		if err != nil {
+//			logf("UDP local read error: %v", err)
+//			continue
+//		}
+		n, addr, err := c.ReadFrom(buf)
 		if err != nil {
 			logf("UDP local read error: %v", err)
 			continue
 		}
-
+		raddr, err := udpAddrToNetip(addr)
+		if err != nil {
+			logf("Address conversion failed: %v", err)
+			continue
+		}
+// End of patch
 		pc := nm.Get(raddr)
 		if pc == nil {
 			pc, err = net.ListenPacket("udp", "")
@@ -157,12 +177,22 @@ func udpRemote(addr string, shadow func(net.PacketConn) net.PacketConn) {
 
 	logf("listening UDP on %s", addr)
 	for {
-		n, raddr, err := c.ReadFromUDPAddrPort(buf)
+//		n, raddr, err := c.ReadFromUDPAddrPort(buf)
+//		if err != nil {
+//			logf("UDP remote read error: %v", err)
+//			continue
+//		}
+		n, addr, err := c.ReadFrom(buf)
 		if err != nil {
 			logf("UDP remote read error: %v", err)
 			continue
 		}
-
+		raddr, err := udpAddrToNetip(addr)
+		if err != nil {
+			logf("Address conversion failed: %v", err)
+			continue
+		}
+// End of patch
 		tgtAddr := socks.SplitAddr(buf[:n])
 		if tgtAddr == nil {
 			logf("failed to split target address from packet: %q", buf[:n])
@@ -252,11 +282,16 @@ func timedCopy(dst UDPConn, target netip.AddrPort, src net.PacketConn, timeout t
 
 	for {
 		src.SetReadDeadline(time.Now().Add(timeout))
-		n, raddr, err := src.ReadFrom(buf)
+//		n, raddr, err := src.ReadFrom(buf)
+		n, addr, err := src.ReadFrom(buf)
 		if err != nil {
 			return err
 		}
-
+		raddr, err := udpAddrToNetip(addr)
+		if err != nil {
+			return fmt.Errorf("address conversion failed: %v", err)
+		}
+// End of patch
 		switch role {
 		case remoteServer: // server -> client: add original packet source
 			srcAddr := socks.ParseAddr(raddr.String())
@@ -274,4 +309,16 @@ func timedCopy(dst UDPConn, target netip.AddrPort, src net.PacketConn, timeout t
 			return err
 		}
 	}
+}
+
+func udpAddrToNetip(addr net.Addr) (netip.AddrPort, error) {
+	udp, ok := addr.(*net.UDPAddr)
+	if !ok {
+		return netip.AddrPort{}, fmt.Errorf("not a UDPAddr")
+	}
+	ip := netip.ParseAddr(udp.IP.String())
+	if !ip.IsValid() {
+		return netip.AddrPort{}, fmt.Errorf("invalid IP: %v", udp.IP)
+	}
+	return netip.AddrPortFrom(ip, uint16(udp.Port)), nil
 }
